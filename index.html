@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>互动数据可视化 - 第5章示例</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            color: white;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+        }
+
+        .chart-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        }
+
+        .chart-title {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chart-info {
+            font-size: 0.8em;
+            color: #666;
+            cursor: help;
+        }
+
+        canvas {
+            max-height: 400px;
+        }
+
+        .controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn.active {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .data-info {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .highlight {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎨 互动数据可视化展示</h1>
+            <p class="subtitle">基于第5章matplotlib示例的Web交互版本</p>
+        </header>
+
+        <div class="dashboard">
+            <!-- 产品销售额分析 -->
+            <div class="chart-container">
+                <div class="chart-title">
+                    产品A与产品B销售额分析
+                    <span class="chart-info">💡 点击按钮切换显示方式</span>
+                </div>
+                <canvas id="productSalesChart"></canvas>
+                <div class="controls">
+                    <button class="btn active" onclick="toggleProductView('line')">折线图</button>
+                    <button class="btn" onclick="toggleProductView('bar')">柱状图</button>
+                    <button class="btn" onclick="toggleProductView('pie')">饼图</button>
+                    <button class="btn" onclick="animateProductChart()">动画效果</button>
+                </div>
+                <div class="data-info">
+                    数据显示了12个月两种产品的销售情况，其中<span class="highlight">夏季(6-8月)</span>销售额最高
+                </div>
+            </div>
+
+            <!-- 养猫养狗人群比例 -->
+            <div class="chart-container">
+                <div class="chart-title">
+                    部分国家养猫与养狗人群比例
+                    <span class="chart-info">💡 鼠标悬停查看详细数据</span>
+                </div>
+                <canvas id="petsChart"></canvas>
+                <div class="controls">
+                    <button class="btn active" onclick="sortPetsData('default')">默认排序</button>
+                    <button class="btn" onclick="sortPetsData('cats')">按养猫比例排序</button>
+                    <button class="btn" onclick="sortPetsData('dogs')">按养狗比例排序</button>
+                    <button class="btn" onclick="togglePetsView()">切换显示</button>
+                </div>
+            </div>
+
+            <!-- 抖音用户分析 -->
+            <div class="chart-container">
+                <div class="chart-title">
+                    2017-2018抖音用户增长分析
+                    <span class="chart-info">💡 点击图例显示/隐藏数据</span>
+                </div>
+                <canvas id="douyinChart"></canvas>
+                <div class="controls">
+                    <button class="btn active" onclick="showDouyinData('growth')">增长倍数</button>
+                    <button class="btn" onclick="showDouyinData('2017')">2017分布</button>
+                    <button class="btn" onclick="showDouyinData('2018')">2018分布</button>
+                    <button class="btn" onclick="compareDouyinData()">对比分析</button>
+                </div>
+                <div class="data-info">
+                    2018年抖音用户增长<span class="highlight">75倍</span>，四线及以外城市增长最为显著
+                </div>
+            </div>
+
+            <!-- 气温降水关系 -->
+            <div class="chart-container">
+                <div class="chart-title">
+                    全年平均气温与降水量、蒸发量关系
+                    <span class="chart-info">💡 鼠标悬停查看月度详情</span>
+                </div>
+                <canvas id="climateChart"></canvas>
+                <div class="controls">
+                    <button class="btn active" onclick="showClimateData('all')">全部数据</button>
+                    <button class="btn" onclick="showClimateData('temperature')">仅气温</button>
+                    <button class="btn" onclick="showClimateData('water')">仅水量</button>
+                    <button class="btn" onclick="highlightSummer()">突出夏季</button>
+                </div>
+            </div>
+
+            <!-- 汽车销售分析 -->
+            <div class="chart-container">
+                <div class="chart-title">
+                    2018年上半年汽车销售情况
+                    <span class="chart-info">💡 点击按钮切换不同分析维度</span>
+                </div>
+                <canvas id="carSalesChart"></canvas>
+                <div class="controls">
+                    <button class="btn active" onclick="showCarData('monthly')">月度销售额</button>
+                    <button class="btn" onclick="showCarData('regional')">地区销量</button>
+                    <button class="btn" onclick="showCarData('stacked')">堆叠分析</button>
+                    <button class="btn" onclick="animateCarChart()">动画展示</button>
+                </div>
+                <div class="data-info">
+                    <span class="highlight">1月</span>销售额最高达到2150亿元，<span class="highlight">北京</span>地区销量领先
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
